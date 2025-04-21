@@ -10,9 +10,9 @@ This study aimed to construct a baseline model of mortality to estimate excess m
 
 # Introduction
 
-The consequences of natural disasters usually extend far beyond acute, one-time damage. They often result in significant fluctuations in mortality within the affected regions. The quantification of excess mortality, which is the deviation from the normal observed deaths at the baseline level, is crucial for assessing the public health cost of such events, providing evidence-based public health advice, and helping construct strategies for similar crises. This study aims to build and assess models that aid in estimating excess mortality in Puerto Rico during the years 2017 and 2018, a post-hurricane period following Hurricane Maria, which hit the island in September 2017. This Category 5 hurricane inflicted widespread devastation across the island, disrupting essential services and damaging basic infrastructure. Understanding the specific magnitude and temporal dynamics of excess mortality during this post-hurricane period may be critical for future healthcare resource allocation, evaluating the current effectiveness of disaster response efforts, and identifying sub-populations that require targeted support in future crises.
+The consequences of natural disasters usually extend far beyond acute, one-time damage. They often result in significant fluctuations in mortality within the affected regions. The quantification of excess mortality, which is the deviation from the normal observed deaths at the baseline level, is crucial for assessing the public health cost of such events, providing evidence-based public health advice, and helping construct strategies for similar crises. This study aims to build and assess models that aid in estimating excess mortality in Puerto Rico during the years 2017 and 2018, a post-hurricane period following Hurricane Maria, which hit the island in September 2017 (National Hurricane Center, 2018). This Category 5 hurricane inflicted widespread devastation across the island, disrupting essential services and damaging basic infrastructure. Understanding the specific magnitude and temporal dynamics of excess mortality during this post-hurricane period may be critical for future healthcare resource allocation, evaluating the current effectiveness of disaster response efforts, and identifying sub-populations that require targeted support in future crises.
 
-Establishing a reliable baseline of expected mortality is a fundamental step for accurate excess mortality estimation. This project utilizes a comprehensive historical mortality dataset for Puerto Rico, covering 20 years from 1997 to 2016, which is provided in the `excessmort` R package. It is expected that this extensive temporal coverage can provide sufficient information for constructing statistical models that capture underlying mortality trends by age and gender, regular seasonal variations due to flu season, and the impact of public healthcare improvements. By analyzing this data, we aim to develop models capable of predicting expected mortality for the years 2017 and 2018 and demonstrating the impact of Hurricane Maria.
+Establishing a reliable baseline of expected mortality is a fundamental step for accurate excess mortality estimation. This project utilizes a comprehensive historical mortality dataset for Puerto Rico, covering 20 years from 1997 to 2016, which is provided in the `excessmort` R package (Acosta & Irizarry, 2020). It is expected that this extensive temporal coverage can provide sufficient information for constructing statistical models that capture underlying mortality trends by age and gender, regular seasonal variations due to flu season, and the impact of public healthcare improvements. By analyzing this data, we aim to develop models capable of predicting expected mortality for the years 2017 and 2018 and demonstrating the impact of Hurricane Maria.
 
 Recognizing that previous events in historic data may also cause abnormal mortality, this analysis excludes periods with elevated mortality associated with Hurricane Georges from the training set. Furthermore, to reduce model complexity and strengthen generalizability, age groups were reconstructed based on pre-2017 mortality patterns.
 
@@ -24,7 +24,7 @@ This study aims to estimate the excess mortality in Puerto Rico for the years 20
 
 ### 1. Dataset and Predictors
 
-Mortality data spanning 20 years (1997-2016) were used to build the baseline mortality models for Puerto Rico. The dataset comprises 289,260 valid observations, with predictors including age group, date of the event, gender, and corresponding population size. To improve the baseline mortality estimation, a period of unusually high mortality (September 21st to November 30th, 1998) associated with Hurricane Georges was excluded from the training data. Age groups were reconstructed based on the similarity of their weekly average mortality before 2017 to mitigate potential overfitting.
+Mortality data spanning 20 years (1997-2016) were used to build the baseline mortality models for Puerto Rico. The dataset comprises 289,260 valid observations, with predictors including age group, date of the event, gender, and corresponding population size. To improve the baseline mortality estimation, a period of unusually high mortality (September 21st to November 30th, 1998) associated with Hurricane Georges was excluded from the training data (National Hurricane Service, 1998). Age groups were reconstructed based on the similarity of their weekly average mortality before 2017 to mitigate potential overfitting.
 
 Three additional covariates were introduced to capture temporal trends: 1) week of the year (to account for seasonality); 2) number of years since 1997 (to model gradual long-term changes); and 3) number of days since January 1st, 1997 (as an alternative continuous time variable). These predictors aim to account for seasonal fluctuations (e.g., winter mortality spikes) and potential long-term shifts in mortality rates, possibly due to changes in the age structure of the Puerto Rican population (Figure 2.1).
 
@@ -150,3 +150,18 @@ Our findings also have significant implications for public health planning and d
 While our models accounted for seasonality, long-term trends, and demographic factors, they may not fully capture other potentially relevant covariates such as socioeconomic status, healthcare access, or geographic population distribution. Future studies could enhance the baseline model's predictive performance by incorporating more detailed information and additional predictors, or use advanced machine learning approaches.
 
 In conclusion, this study provides robust evidence of significant excess mortality in Puerto Rico following Hurricane Maria, along with methodological insights into the comparative strengths of different statistical approaches for estimating disaster-related mortality. These findings emphasize the severe impact of Hurricane Maria and the importance of comprehensive disaster response measures that can help mitigate loss in future crisis.
+
+# References:
+
+Acosta, R. J., & Irizarry, R. A. (2020) *excessmort: Tools for modeling excess mortality.* R package version 0.1.0. https://github.com/rafalab/excessmort
+
+National Hurricane Center (2018) *Tropical Cyclone Report: Hurricane Maria (AL152017).* https://www.nhc.noaa.gov/data/tcr/AL152017_Maria.pdf
+
+National Hurricane Center (1998) *Preliminary Report: Hurricane Georges.*
+
+https://www.nhc.noaa.gov/data/tcr/AL071998_Georges.pdf
+
+
+
+
+
