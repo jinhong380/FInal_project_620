@@ -1,0 +1,944 @@
+---
+title: "Final Project"
+author: "Jintong Hong"
+format: pdf
+editor: visual
+---
+# Delete after final version
+
+```{r}
+setwd("~/Desktop/umich/25-26/BIOSTAT620/ProblemSetTestMode/Final_Project")
+```
+
+# Setups
+
+```{r}
+library(excessmort)
+library(readxl)
+library(lubridate)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+data("puerto_rico_counts")
+
+```
+
+# Examine the population sizes by age group and sex. Describe any interesting patterns.
+
+## 1. The summary of the population trend since 1985-01-01 (to 2022-12-31)
+
+```{r}
+population_summary <- puerto_rico_counts |>
+  filter(year(date) > 1996 & year(date) < 2019) |>
+  group_by(agegroup, sex) |>
+  summarize(
+    avg_population = mean(population, na.rm = TRUE),
+    median_population = median(population, na.rm = TRUE),
+    sd_population = sd(population, na.rm = TRUE),
+    min_population = min(population, na.rm = TRUE),
+    max_population = max(population, na.rm = TRUE),
+    .groups = "drop"
+  )
+population_summary
+```
+
+Generate plot examine the population trends over time by age group and sex:
+
+```{r}
+p1 <- puerto_rico_counts |>
+  filter(year(date) > 1996 & year(date) < 2019) |>
+  ggplot(aes(x = date, y = population, color = sex)) +
+  geom_line(alpha = 0.5) +
+  facet_wrap(~agegroup, scales = "free_y") +
+  labs(title = "Population Trends Over Time by Age Group and Sex",
+       x = "Year",
+       y = "Population",
+       color = "Sex") +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+print(p1)
+```
+
+## 2.  Quantify the population change rates:
+
+```{r}
+# Compute yearly population change rate
+population_change <- puerto_rico_counts |>
+  filter(year(date) > 1996 & year(date) < 2019) |>
+  arrange(agegroup, sex, date) |>
+  group_by(agegroup, sex) |>
+  mutate(year = as.integer(format(date, "%Y")),
+         population_change = (population - lag(population)) / lag(population) * 100) |>
+  summarize(
+    avg_yearly_change = round(mean(population_change, na.rm = TRUE), 5),
+    median_yearly_change = round(median(population_change, na.rm = TRUE), 5),
+    .groups = "drop"
+  )
+
+# Print yearly population change rates
+print(population_change)
+
+```
+
+
+# Use data from before 2017 to estimate expected mortality and a standard deviation for each week. Do this by age group and sex. Describe tendencies you observe. You can combine data into bigger age groups if the data show they have similar death rates.
+
+## Filter dataset with data before 2017 and generate the weekly mortality rates
+
+```{r}
+filtered_dat <- puerto_rico_counts |>
+  filter(date < make_date(2017,1,1) & year(date)>= 1997) |>
+  mutate(
+    week = epiweek(date),
+    year = year(date)
+  )
+
+weekly_mortality <- filtered_dat |>
+  group_by(agegroup, sex, week) |>
+  summarize(exp_mortality = mean(outcome, na.rm = T),
+            sd_mortality= sd(outcome,na.rm = T)) |>
+  ungroup()
+
+print(weekly_mortality)
+```
+
+```{r}
+p2 <- ggplot(weekly_mortality, aes(x = week, y = exp_mortality, color = sex)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = exp_mortality - sd_mortality, ymax = exp_mortality + sd_mortality, fill = sex), alpha = 0.2) +
+  facet_wrap(~ agegroup, scales = "free_y") +
+  labs(title = "Weekly Expected Mortality (Pre-2017)", x = "Week of Year", y = "Expected Deaths") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+print(p2)
+```
+```{r}
+p3 <- ggplot(weekly_mortality, aes(x = week, y = exp_mortality, color = sex)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = exp_mortality - sd_mortality, ymax = exp_mortality + sd_mortality, fill = sex), alpha = 0.2) +
+  facet_wrap(~ agegroup) +
+  labs(title = "Weekly Expected Mortality (Pre-2017)", x = "Week of Year", y = "Expected Deaths") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+print(p3)
+```
+## Combine some agegroup with similar patterns
+
+```{r}
+age_group_map <- c("0-4", "5-14", "15-19", "20-25", "25-49", 
+                   "50-59", "60-69", "70-79", "80-84", "85+")
+
+# Create a function to categorize age groups
+categorize_age_group <- function(agegroup) {
+  case_when(
+    agegroup %in% c("0-4") ~ "0-4",
+    agegroup %in% c("5-9", "10-14") ~ "5-14",
+    agegroup %in% c("15-19") ~ "15-19",
+    agegroup %in% c("20-24") ~ "20-25",
+    agegroup %in% c("25-29", "30-34", "35-39", "40-44", "45-49") ~ "25-49",
+    agegroup %in% c("50-54", "55-59") ~ "50-59",
+    agegroup %in% c("60-64", "65-69") ~ "60-69",
+    agegroup %in% c("70-74", "75-79") ~ "70-79",
+    agegroup %in% c("80-84") ~ "80-84",
+    agegroup %in% c("85-Inf") ~ "85+"
+    )
+}
+# Apply age group categorization
+pr_counts_filtered <- puerto_rico_counts |>
+  mutate(new_agegroup = as.factor(categorize_age_group(agegroup))) |>
+  select(-agegroup)
+
+```
+
+## Reconstruct the dataset for plotting
+
+```{r}
+pr_filtered_dat <- pr_counts_filtered |>
+  filter(date < make_date(2017,1,1)) |>
+  mutate(
+    week = epiweek(date),
+    year = year(date)
+  )
+
+pr_weekly_mortality <- pr_filtered_dat |>
+  group_by(new_agegroup, sex, week) |>
+  summarize(exp_mortality = mean(outcome, na.rm = T),
+            sd_mortality= sd(outcome,na.rm = T)) |>
+  ungroup()
+
+print(pr_weekly_mortality)
+```
+
+## Plot the graph
+
+```{r}
+p5 <- ggplot(pr_weekly_mortality, aes(x = week, y = exp_mortality, color = sex)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = exp_mortality - sd_mortality, ymax = exp_mortality + sd_mortality, fill = sex), alpha = 0.2) +
+  facet_wrap(~ new_agegroup, scales = "free_y") +
+  labs(title = "Weekly Expected Mortality with Larger Agegroup (Pre-2017)", x = "Week of Year", y = "Expected Deaths") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+print(p5)
+```
+
+
+# Explore the data to see if there are periods during or before 2017 that appear to have excess mortality. If so, explain and recompute expected death rates removing these periods.
+
+## weekly mortality rate and montly mortality rate visualization
+
+```{r}
+weekly_mortality_rate <- pr_counts_filtered |>
+  filter(date < make_date(2019,1,1)) |>
+  mutate(date = floor_date(date, unit = "week")) |>
+  group_by(date, sex, new_agegroup) |>
+  summarize(outcome = sum(outcome), 
+            population = mean(population), 
+            n = n(), 
+            .groups = "drop") |>
+  ungroup() |>
+  filter(n == 7) |>
+  select(-n) |>
+  mutate(week = epiweek(date)) |> 
+  group_by(date, week) |>
+  summarize(rate = sum(outcome)/sum(population)*1000, .groups = "drop") 
+
+p12 <- ggplot(weekly_mortality_rate, aes(x = date, y = rate)) +
+  geom_line(color = "darkgrey") +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y"
+  ) +
+  labs(
+    title = "Weekly Mortality Rate in Puerto Rico",
+    x = "Year",
+    y = "Mortality Rate (per 1,000)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+print(p12)
+```
+
+```{r}
+monthly_mortality_rate <- pr_counts_filtered |>
+  filter(date < make_date(2018,1,1)) |>
+  mutate(date = floor_date(date, unit = "month")) |>
+  group_by(date, sex, new_agegroup) |>
+  summarize(outcome = sum(outcome), 
+            population = mean(population), 
+            .groups = "drop") |>
+  ungroup() |>
+  mutate(month = month(date)) |> 
+  group_by(date, month) |>
+  summarize(rate = sum(outcome)/sum(population)*1000, .groups = "drop") 
+
+p7 <- ggplot(monthly_mortality_rate, aes(x = date, y = rate)) +
+  geom_line(color = "darkgrey") +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y"
+  ) +
+  labs(
+    title = "Monthly Mortality Rate in Puerto Rico",
+    x = "Year",
+    y = "Mortality Rate (per 1,000)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+print(p7)
+```
+There is apparently a strong year effect for mortality rate, this is likely due to the change of population stratification (switching from young generation to old generations).
+
+```{r}
+# Here use all data since 1985 to end of 2018 and compare with 2017 weekly mortality data
+library(gganimate)
+
+weekly_mortality_rate <- pr_counts_filtered |>
+  filter(date < make_date(2019,1,1)) |>
+  mutate(date = floor_date(date, unit = "week")) |>
+  group_by(date, sex, new_agegroup) |>
+  summarize(outcome = sum(outcome), 
+            population = mean(population), 
+            .groups = "drop") |>
+  ungroup() |>
+  mutate(week = epiweek(date))
+
+totals <- weekly_mortality_rate |> 
+  group_by(date, week) |>
+  summarize(rate = sum(outcome)/sum(population)*1000, .groups = "drop") 
+
+totals |> filter(year(date) < 2000) |>
+  filter(year(date) > 1990) |>
+  ggplot(aes(week, rate, group = week)) +
+  geom_boxplot() +
+  geom_point(data = filter(totals, year(date) == 1998), color = "red")
+
+
+```
+
+Amination graph
+
+```{r}
+point_data <- totals |> 
+  filter(year(date) >= 1986, year(date) < 2018) |> 
+  mutate(year = year(date))
+
+boxplot_data <- totals |> 
+  filter(year(date) < 2017)
+
+panimation <- ggplot(boxplot_data, aes(x = week, y = rate, group = week)) +
+  geom_boxplot() +
+  geom_point(data = point_data, aes(group = year), color = "red", alpha = 0.7) +
+  labs(
+    title = "Weekly Mortality Rate Distribution (Pre-2017)",
+    subtitle = "Red points show weekly mortality in {closest_state}",
+    x = "Epidemiological Week",
+    y = "Mortality Rate (per 1,000)"
+  ) +
+  theme_minimal() +
+  transition_states(year, transition_length = 1, state_length = 1) +
+  ease_aes("linear")
+
+#anim <- animate(panimation, nframes = 32, fps = 4, width = 1000, height = 500, renderer = gifski_renderer())
+
+#anim_save("mortality_animation.gif", animation = anim)
+#anim
+```
+
+## Hurricane Georges 1998
+
+```{r}
+dat <- weekly_mortality_rate |> 
+  filter(year(date) >= 1990 & year(date) <= 2017) |>
+  mutate(day = difftime(date, min(date), units = "day"),
+         week = as.factor(week),
+         rate = outcome/population,
+         year = year(date)-1990) 
+fit <- dat |> filter(!year(date) == 1998)
+```
+
+```{r}
+mod1 <- lm(rate ~ sex + new_agegroup + week + day,
+               data = fit)
+# AIC: -398650.3
+
+mod2 <- lm(rate ~ sex * new_agegroup + week  + day,
+               data = fit)
+# AIC: -405284
+```
+
+
+```{r}
+pred <- predict(mod2, newdata = dat, se.fit = TRUE)
+
+dat <- dat |>
+  mutate(expected = pred$fit*population,  
+         excess = outcome - expected,
+         se_expected = pred$se.fit*population,
+         sigma_outcome = sd(mod1$residuals)*population,
+         se_excess = sqrt(sigma_outcome^2 + se_expected^2))
+
+p11 <- dat |> 
+  filter(year(date) == 1998) |> 
+  group_by(date) |>
+  summarize(excess = sum(excess), se = sqrt(sum(se_excess^2)), .groups = "drop") |>
+  ggplot(aes(date, excess)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = excess - 1.96 * se, ymax = excess + 1.96 * se), width = 0.2) +
+  geom_vline(xintercept = make_date(1998, 9, 21), lty = 2, color = "red") +
+  geom_vline(xintercept = make_date(1998, 11, 30), lty = 2, color = "red") +
+  geom_hline(yintercept = 0, lty = 2) +
+  theme_minimal()  +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(
+    title = "Excess Mortality of 1998"
+  )
+p11
+```
+
+As expected, Hurricane Georges started from September 21, 1998 to Late October caused abnormally high mortality rate from Sep. 21st to Nov. 30th.
+
+## Hurricane Maria 2017
+
+```{r}
+dat <- weekly_mortality_rate |> 
+  filter(year(date) >= 1990 & year(date) <= 2017) |>
+  mutate(day = difftime(date, min(date), units = "day"),
+         week = as.factor(week),
+         rate = outcome/population,
+         year = year(date)-1990) 
+fit <- dat |> filter(!year(date) == 2017)
+```
+
+```{r}
+mod1 <- lm(rate ~ sex + new_agegroup + week + day,
+               data = fit)
+
+mod2 <- lm(rate ~ sex * new_agegroup + week  + day + year,
+               data = fit)
+```
+
+
+```{r}
+pred <- predict(mod2, newdata = dat, se.fit = TRUE)
+
+dat <- dat |>
+  mutate(expected = pred$fit*population,  
+         excess = outcome - expected,
+         se_expected = pred$se.fit*population,
+         sigma_outcome = sd(mod1$residuals)*population,
+         se_excess = sqrt(sigma_outcome^2 + se_expected^2))
+
+dat |> 
+  filter(year(date) == 2017) |> 
+  group_by(date) |>
+  summarize(excess = sum(excess), se = sqrt(sum(se_excess^2)), .groups = "drop") |>
+  ggplot(aes(date, excess)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = excess - 1.96 * se, ymax = excess + 1.96 * se), width = 0.2) +
+  geom_vline(xintercept = make_date(2017, 9, 2), lty = 2, color = "red") +
+  geom_vline(xintercept = make_date(2017, 12, 25), lty = 2, color = "red") +
+  geom_hline(yintercept = 0, lty = 2) +
+  theme_minimal()  +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+As expected, Hurricane Maria started from September 20, 2017 to Late October caused abnormally high mortality rate from Sep. 20th to Dec. 25th.
+
+So we need to filter these two periods.
+
+```{r}
+weekly_mortality_rate_filtered <- weekly_mortality_rate |>
+  filter((date >= as.Date("2017-09-20") 
+          & date <= as.Date("2017-12-25")) |
+           (date >= as.Date("1998-09-21") & 
+              date <= as.Date("1998-11-30")))
+
+dat <- weekly_mortality_rate_filtered |> 
+  filter(year(date) >= 1990 & year(date) <= 2017) |>
+  mutate(day = difftime(date, min(date), units = "day"),
+         week = as.factor(week),
+         rate = outcome/population,
+         year = year(date)-1990) 
+
+fit <- dat |> filter(!year(date) == 2017)
+```
+
+```{r}
+mod3 <- lm(rate ~ sex * new_agegroup + week  + year,
+               data = fit)
+
+summary(mod3)
+```
+
+# Estimate excess deaths for each week of 2017-2018. Make sure you define the weeks so that one of the weeks starts the day María made landfall. Comment on excess mortality. Which age groups were affected? Were men and women affected differently?
+
+## Linear Regression
+```{r}
+# Define Weekly Periods Starting on María’s Landfall
+dat <- weekly_mortality_rate |> 
+  filter((date <= as.Date("2017-09-20") 
+          | date >= as.Date("2017-12-25"))) |>
+  filter((date <= as.Date("1998-09-21") 
+          | date >= as.Date("1998-12-30"))) |>
+  filter(year(date) >= 1997 & year(date) < 2017) |>
+  mutate(date = floor_date(date, week_start = 3, unit = "week")) |>
+  mutate(day = difftime(date, min(date), units = "day"),
+         week = as.factor(week),
+         rate = outcome/population,
+         year = year(date)-1997) 
+
+mod1 <- lm(rate ~ sex * new_agegroup + week + day,
+               data = dat)
+
+mod2 <- lm(rate ~ sex + new_agegroup + week + year,
+               data = dat)
+
+mod3 <- lm(rate ~ sex * new_agegroup + week + year,
+               data = dat)
+
+dat_pred <- weekly_mortality_rate |> 
+  mutate(date = floor_date(date, week_start = 3, unit = "week")) |>
+  filter(year(date) == 2017 | year(date) == 2018) |>
+  mutate(day = difftime(date, min(date), units = "day"),
+         week = as.factor(week),
+         rate = outcome/population,
+         year = year(date)-1997) 
+```
+
+Compare two models:
+
+```{r}
+# Predictions
+pred_mod1 <- predict(mod1, newdata = dat_pred)
+pred_mod2 <- predict(mod2, newdata = dat_pred)
+pred_mod3 <- predict(mod3, newdata = dat_pred)
+
+# Add to data for evaluation
+dat_pred <- dat_pred |>
+  mutate(pred1 = pred_mod1,
+         pred2 = pred_mod2,
+         pred3 = pred_mod3)
+
+# Compute RMSE and MAE
+library(Metrics)
+
+rmse1 <- rmse(dat_pred$rate, dat_pred$pred1)
+rmse2 <- rmse(dat_pred$rate, dat_pred$pred2)
+rmse3 <- rmse(dat_pred$rate, dat_pred$pred3)
+
+mae1 <- mae(dat_pred$rate, dat_pred$pred1)
+mae2 <- mae(dat_pred$rate, dat_pred$pred2)
+mae3 <- mae(dat_pred$rate, dat_pred$pred3)
+
+c(RMSE_mod1 = rmse1, RMSE_mod2 = rmse2,
+  RMSE_mod3 = rmse3, MAE_mod1 = mae1,
+  MAE_mod2 = mae2, MAE_mod3 = mae3)
+
+```
+Overall, Mod3 performs better than both Mod1 and Mod3
+
+Predict Expected Mortality for Each Week (2017–2018) with mod3
+
+```{r}
+# Generate predictions
+pred <- predict(mod3, newdata = dat_pred, se.fit = TRUE)
+
+
+# Combine predictions and calculate excess deaths
+prediction_data <- dat_pred |>
+  mutate(
+    expected = pred$fit * population,
+    excess = outcome - expected,
+    se_expected = pred$se.fit * population,
+    sigma_outcome = sd(mod3$residuals) * population,
+    se_excess = sqrt(sigma_outcome^2 + se_expected^2)
+  )
+# Calculate the rmse with linear regression model
+rmse_lm <- rmse(prediction_data$outcome, prediction_data$expected)
+mae_lm <- mae(prediction_data$outcome, prediction_data$expected)
+
+```
+
+
+```{r}
+excess_weekly <- prediction_data |>
+  group_by(week, year) |>
+  summarize(
+    date_start = min(date),
+    total_excess = sum(excess),
+    se_total_excess = sqrt(sum(se_excess^2)),
+    .groups = "drop"
+  ) |>
+  mutate(
+    ci_lower = total_excess - 1.96 * se_total_excess,
+    ci_upper = total_excess + 1.96 * se_total_excess
+  ) |>
+  arrange(date_start)
+```
+
+
+```{r}
+p4 <- ggplot(excess_weekly[1:nrow(excess_weekly)-1,], aes(x = date_start, y = total_excess)) +
+  geom_line() +
+  geom_point() +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), fill = "steelblue", alpha = 0.3) +
+  geom_vline(xintercept = make_date(2017, 9, 20), linetype = "dashed", color = "red") +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Weekly Excess Mortality in Puerto Rico (2017–2018)",
+    x = "Week Starting",
+    y = "Estimated Excess Deaths"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+p4
+```
+
+```{r}
+excess_by_demo <- prediction_data |>
+  group_by(week, new_agegroup, sex) |>
+  summarize(
+    excess = sum(excess),
+    se = sqrt(sum(se_excess^2)),
+  ) |>
+  mutate(
+    ci_lower = excess - 1.96 * se,
+    ci_upper = excess + 1.96 * se
+  ) 
+```
+
+
+```{r}
+p5 <- ggplot(excess_by_demo, aes(x = week, y = excess, color = sex)) +
+  geom_line(aes(group = new_agegroup)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = sex), alpha = 0.3, color = NA) +
+  facet_wrap(~ new_agegroup, scales = "free_y") +
+  labs(
+    title = "Weekly Excess Mortality by Age Gruop and Sex (2017–2018)",
+    x = "Week (Start from Wednesday)",
+    y = "Excess Deaths"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p5
+```
+
+
+## Time series:
+
+```{r}
+library(mgcv)
+
+# Training dataset
+dat <- weekly_mortality_rate |> 
+  filter((date <= as.Date("2017-09-20") 
+          | date >= as.Date("2017-12-25"))) |>
+  filter((date <= as.Date("1998-09-21") 
+          | date >= as.Date("1998-12-30"))) |>
+  filter(year(date) >= 1997 & year(date) < 2017) |>
+  mutate(date = floor_date(date, week_start = 3, unit = "week")) |>
+  mutate(day = difftime(date, min(date), units = "day"),
+         week = as.numeric(week),
+         rate = outcome/population,
+         year = year(date)-1997) |>
+  rename(
+    deaths = outcome,
+    age_group = new_agegroup 
+  )
+
+# Create a numeric time variable for the smooth trend
+dat <- dat|>
+  arrange(date)|>
+  mutate(time_numeric = as.numeric(date - min(date)))
+
+baseline_model <- gam(deaths ~ s(time_numeric, by = age_group, k = 5) +
+                      s(week, bs = "cc", k = 5) +
+                      age_group * sex + 
+                      year +
+                      offset(log(population)),
+                      family = poisson(),
+                      data = dat)
+
+```
+
+Estimate the deaths:
+
+```{r}
+years_to_predict <- 2017:2018
+min_date_train <- min(dat$date)
+
+fit <- weekly_mortality_rate |> 
+  filter(year(date) ==2017 | year(date) == 2018) |>
+  mutate(date = floor_date(date, week_start = 3, unit = "week")) |>
+  mutate(day = difftime(date, min(date), units = "day"),
+         week = as.numeric(week),
+         rate = outcome/population,
+         year = year(date)-1997) |>
+  rename(
+    deaths = outcome,
+    age_group = new_agegroup 
+  )
+
+fit <- fit|>
+  arrange(date)|>
+  mutate(time_numeric = as.numeric(date - min_date_train)) 
+
+predictions <- predict(baseline_model, newdata = fit, type = "response")
+```
+
+
+```{r}
+fit <- fit |> mutate(
+  expected_deaths = predictions,
+  excess = deaths - expected_deaths
+)
+
+rmse_gam <- rmse(fit$deaths, predictions)
+mae_gam <- mae(fit$deaths, predictions)
+
+excess_weekly_ts <- fit |>
+  group_by(date) |>
+  summarize(
+    date_start = min(date),
+    total_excess_ts = sum(excess),
+    .groups = "drop"
+  )
+
+excess_weekly_ts
+```
+
+```{r}
+p6 <- ggplot(excess_weekly_ts[1:nrow(excess_weekly_ts)-1,], aes(x = date_start, y = total_excess_ts)) +
+  geom_line() +
+  geom_point() +
+  geom_vline(xintercept = make_date(2017, 9, 20), linetype = "dashed", color = "red") +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Weekly Excess Mortality in Puerto Rico (2017–2018)",
+    x = "Week Starting",
+    y = "Estimated Excess Deaths"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+p6
+```
+## Combine two model predictions:
+
+```{r}
+excess_weekly_total <- full_join(excess_weekly_ts, excess_weekly,
+                                 by = "date_start") 
+
+p7 <- excess_weekly_total[1:nrow(excess_weekly_total) - 1,] |>
+  select(date, total_excess_ts,total_excess) |>
+    ggplot(aes(x = date)) +
+    geom_line(aes(y = total_excess_ts, color = "Time seires")) +
+    geom_line(aes(y = total_excess, color = "Linear regression")) +  
+    geom_vline(xintercept = make_date(2017, 9, 20), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey") +
+    labs(
+      title = "Comparison of Total Excess Deaths Estimation (2017-2018)",
+      x = "Date",
+      y = "Total Excess Deaths",
+      color = "Series"
+    ) +
+    theme_minimal() +
+    theme(element_text(hjust = 0.5))
+
+p7
+```
+
+Time series performed better than linear regression model when using 20 years of past data. It catches the constant death rate more precisely compared with linear regression model.
+
+## rmse comparison
+
+```{r}
+rmse_gam
+rmse_lm
+
+mae_gam
+mae_lm
+```
+
+
+# Extract the data from the PDF shared with NY Times. Comment on how it matches with excessmort package data.
+
+```{r}
+ny_dat <- read_excel("NY_Data.xlsx") |> # import the NY data
+  rename(date = ...1)|> 
+  mutate(
+    # format the date to only month and date
+    date = format(as.Date(date), "%m-%d") 
+    )
+head(ny_dat)
+
+```
+
+
+```{r}
+ny_long <- ny_dat |>
+  select(-`Diff.`) |>
+  pivot_longer(cols = -date, names_to = "year", values_to = "deaths") |>
+  mutate(
+    # Construct full date string (assuming month-day in date column)
+    full_date = ymd(paste(year, date, sep = "-")),
+    epiweek = epiweek(full_date),
+    year = as.integer(year),
+    doy = yday(full_date)
+  ) |>
+  select(full_date, year, deaths, epiweek, doy) |>
+  arrange(full_date)
+
+# View the result
+print(ny_long)
+```
+
+Daily deaths by ny data
+
+```{r}
+ggplot(ny_long, aes(x = doy, y = deaths, color = factor(year), group = year)) +
+  geom_line() +
+  facet_grid(.~year)+
+  labs(
+    title = "Daily Deaths Over Time",
+    x = "Date",
+    y = "Deaths"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+```
+
+
+## Weekly deaths by ny data
+
+```{r}
+weekly_ny_long <- ny_long |>
+  mutate(full_date = floor_date(full_date, week_start = 3, unit = "week")) |>
+  group_by(full_date) |>
+  summarize(outcome = sum(deaths), 
+            n = n(), 
+            .groups = "drop") |>
+  filter(n == 7) |>
+  select(-n) |>
+  mutate(week = epiweek(full_date)) |>
+  arrange(full_date)
+```
+
+```{r}
+p8 <- weekly_ny_long |>
+  ggplot(aes(as.Date(full_date), outcome)) + # Explicitly use as.Date (though it shouldn't be needed)
+  geom_point() +
+  geom_line() +
+  labs(
+    x = "Week",
+    y = "Total Deaths",
+    title = "Weekly Deaths in Puerto Rico by NY times (2015–2017)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_date(limits = c(min(weekly_ny_long$full_date), as.Date("2017-11-15")))
+p8 
+```
+
+
+```{r}
+pr_3yr <- puerto_rico_counts |>
+  filter(date >= ymd("2015-01-01") & date <= ymd("2017-12-31")) |>
+  group_by(date) |>
+  summarize(total_deaths = sum(outcome), .groups = "drop") |>
+  mutate(year = year(date),
+         doy = yday(date))  # Day-of-year to align across years
+
+ggplot(pr_3yr, aes(x = doy, y = total_deaths, color = as.factor(year))) +
+  geom_line(size = 0.8, alpha = 0.8) +
+  scale_color_manual(values = c("2015" = "grey", "2016" = "black", "2017" = "steelblue")) +
+  labs(
+    title = "Daily Deaths in Puerto Rico by Excessmort (2015–2017)",
+    x = "Day of Year",
+    y = "Total Deaths",
+    color = "Year"
+  ) +
+  geom_vline(xintercept = yday(ymd("2017-09-20")), 
+             linetype = "dashed", 
+             color = "red") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+```{r}
+weekly_deaths <- pr_3yr |>
+  mutate(date = floor_date(date, week_start = 3, unit = "week")) |>
+  group_by(date) |>
+  summarize(outcome = sum(total_deaths),
+            .groups = "drop") |>
+  mutate(week = epiweek(date))
+```
+
+```{r}
+weekly_deaths |>
+  ggplot(aes(date, outcome)) +
+  geom_point() +
+  geom_line() +
+  labs(
+    x = "Week",
+    y = "Total Deaths",
+    title = "Weekly Deaths in Puerto Rico by Excessmort (2015–2017)"
+  ) +
+  theme_minimal()  +
+  theme(plot.title = element_text(hjust = 0.5))  +
+  scale_x_date(limits = c(min(weekly_ny_long$full_date), as.Date("2017-11-15")))
+```
+
+
+```{r}
+weekly_ny_long <- weekly_ny_long |> rename(date = full_date)
+compare_table <- full_join(weekly_deaths, weekly_ny_long, by = "date") |>
+  rename(excessmort = outcome.x,
+         ny = outcome.y) |>
+  select(date, excessmort, ny) |>
+  mutate(week = epiweek(date)) |>
+  pivot_longer(cols = c(excessmort, ny), names_to = "source", values_to = "deaths")
+head(compare_table)
+```
+
+```{r}
+p9 <- ggplot(compare_table, aes(x = date, y = deaths, color = source)) +
+  geom_line(size = 0.8) +
+  geom_point(size = 1) +
+  labs(
+    title = "Comparison of Weekly Deaths: Excessmort vs NY Data",
+    x = "Date",
+    y = "Deaths",
+    color = "Data Source"
+  ) +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))  +
+  scale_x_date(limits = c(min(compare_table$date), as.Date("2017-11-15")))
+p9
+```
+
+## Compare with time series prediction
+
+```{r}
+fit_ny <- weekly_mortality_rate |> 
+  filter(year(date) == 2015 | year(date) == 2016 |year(date) == 2017) |>
+  mutate(date = floor_date(date, week_start = 3, unit = "week")) |>
+  mutate(day = difftime(date, min(date), units = "day"),
+         week = as.numeric(week),
+         rate = outcome/population,
+         year = year(date)-1997) |>
+  rename(
+    deaths = outcome,
+    age_group = new_agegroup 
+  )
+
+fit_ny <- fit_ny|>
+  arrange(date)|>
+  mutate(time_numeric = as.numeric(date - min_date_train)) 
+
+predictions_ny <- predict(baseline_model, newdata = fit_ny, type = "response")
+
+fit_ny$expected_deaths <- predictions_ny
+
+fit_ny <- fit_ny |>
+  mutate(expected_deaths = predictions_ny) |>
+  group_by(date) |>
+  summarize(
+    date_start = min(date),
+    expected_deaths = sum(expected_deaths),
+    .groups = "drop"
+  ) |>
+    arrange(date_start)
+```
+
+
+## Last
+```{r}
+p10 <- full_join(weekly_ny_long, fit_ny, by = "date") |>
+  mutate(excess_deaths_ny = outcome - expected_deaths) |>
+  ggplot(aes(x = date, y = excess_deaths_ny)) +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = make_date(2017, 9, 20), linetype = "dashed", color = "red") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  
+  labs(
+    x = "Week",
+    y = "Excess Deaths",
+    title = "Weekly Excess Deaths in Puerto Rico by NY times (2015–2017)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_date(limits = c(min(weekly_ny_long$date), as.Date("2017-11-01")))
+p10
+```
+
+
