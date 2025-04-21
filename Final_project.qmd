@@ -4,11 +4,11 @@ author: Jintong Hong
 format: pdf
 ---
 
-## Abstract
+# Abstract
 
 This study aimed to construct a baseline model of mortality to estimate excess mortality in Puerto Rico for the years 2017 and 2018 following Hurricane Maria, using data from 1997 to 2016. The baseline mortality models were constructed using Linear Regression and Generalized Additive Model (GAM) methods and incorporated demographic and temporal covariates. Both models successfully identified an increase in mortality following Hurricane Maria. The GAM, with its ability to model non-linear relationships, demonstrated better predictive performance compared to the linear regression model, as it estimated a larger magnitude and longer duration of excess deaths after the hurricane. External validation using New York Times mortality data also supported the results observed in our model predictions. These findings help reveal the impact of Hurricane Maria on mortality in Puerto Rico and highlight the utility of GAM, while providing knowledge for public health measures and future policymaking.
 
-## Introduction
+# Introduction
 
 The consequences of natural disasters usually extend far beyond acute, one-time damage. They often result in significant fluctuations in mortality within the affected regions. The quantification of excess mortality, which is the deviation from the normal observed deaths at the baseline level, is crucial for assessing the public health cost of such events, providing evidence-based public health advice, and helping construct strategies for similar crises. This study aims to build and assess models that aid in estimating excess mortality in Puerto Rico during the years 2017 and 2018, a post-hurricane period following Hurricane Maria, which hit the island in September 2017. This Category 5 hurricane inflicted widespread devastation across the island, disrupting essential services and damaging basic infrastructure. Understanding the specific magnitude and temporal dynamics of excess mortality during this post-hurricane period may be critical for future healthcare resource allocation, evaluating the current effectiveness of disaster response efforts, and identifying sub-populations that require targeted support in future crises.
 
@@ -18,7 +18,7 @@ Recognizing that previous events in historic data may also cause abnormal mortal
 
 This study explores two distinct statistical modeling approaches for constructing baseline mortality: Linear Regression and Generalized Additive Models (GAMs). Linear regression models offer a relatively simple framework that assumes a linear relationship between predictors and mortality rates. In contrast, GAMs provide a more flexible, non-parametric approach capable of capturing non-linear associations between the predictors and directly estimating baseline mortality adjusted for population. By comparing the two methods, this research seeks to provide a comprehensive assessment of excess mortality in Puerto Rico following Hurricane Maria. Specifically, this study aims to achieve the following goals: 1) Develop and evaluate baseline mortality models for Puerto Rico using 20 years of historical data; 2) Estimate excess mortality for the years 2017 and 2018 using both linear regression and GAM frameworks; 3) Compare model prediction performances using metrics and visualizations; 4) Provide insights into the post-hurricane response to guide future policy adjustments and support studies estimating excess mortality from similar natural crisis.
 
-## Methodology
+# Methodology
 
 This study aims to estimate the excess mortality in Puerto Rico for the years 2017 and 2018 using the dataset `puerto rico mortality` from the `excessmort` package, which dates back to 1997. Two statistical modeling approaches are employed: Linear Regression and Generalized Additive Model (GAM).
 
@@ -86,7 +86,7 @@ $$
 
 Excess deaths were calculated similarly to the linear regression approach. The RMSE and MAE of both models (with the linear regression mortality rate recalculated using observed population) were computed for comparison. Additionally, publicly available mortality data from the New York Times for Puerto Rico (2015-2018) were used to further validate the baseline mortality models and assess for potential overfitting.
 
-## Results
+# Results
 
 ### 3.1 Linear Regression Model
 
@@ -129,7 +129,7 @@ The visualization of the excess mortality estimated by both models is shown in F
 
 ![Figure 3.2: Weekly Excess Mortality in Puerto Rico by NY Times (2015-2017)](images/clipboard-1801735186.png){width="600"}
 
-## Discussion
+# Discussion
 
 The results of this study reveals insights into the excess mortality in Puerto Rico during 2017 and 2018, particularly in the aftermath of Hurricane Maria, as well as a understanding of the baseline mortality of Puerto Rico.
 

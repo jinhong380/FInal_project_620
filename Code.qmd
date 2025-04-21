@@ -4,11 +4,6 @@ author: "Jintong Hong"
 format: pdf
 editor: visual
 ---
-# Delete after final version
-
-```{r}
-setwd("~/Desktop/umich/25-26/BIOSTAT620/ProblemSetTestMode/Final_Project")
-```
 
 # Setups
 
@@ -60,7 +55,7 @@ p1 <- puerto_rico_counts |>
 print(p1)
 ```
 
-## 2.  Quantify the population change rates:
+## 2. Quantify the population change rates:
 
 ```{r}
 # Compute yearly population change rate
@@ -80,7 +75,6 @@ population_change <- puerto_rico_counts |>
 print(population_change)
 
 ```
-
 
 # Use data from before 2017 to estimate expected mortality and a standard deviation for each week. Do this by age group and sex. Describe tendencies you observe. You can combine data into bigger age groups if the data show they have similar death rates.
 
@@ -113,6 +107,7 @@ p2 <- ggplot(weekly_mortality, aes(x = week, y = exp_mortality, color = sex)) +
   theme(plot.title = element_text(hjust = 0.5))
 print(p2)
 ```
+
 ```{r}
 p3 <- ggplot(weekly_mortality, aes(x = week, y = exp_mortality, color = sex)) +
   geom_line() +
@@ -123,6 +118,7 @@ p3 <- ggplot(weekly_mortality, aes(x = week, y = exp_mortality, color = sex)) +
   theme(plot.title = element_text(hjust = 0.5))
 print(p3)
 ```
+
 ## Combine some agegroup with similar patterns
 
 ```{r}
@@ -182,7 +178,6 @@ p5 <- ggplot(pr_weekly_mortality, aes(x = week, y = exp_mortality, color = sex))
   theme(plot.title = element_text(hjust = 0.5))
 print(p5)
 ```
-
 
 # Explore the data to see if there are periods during or before 2017 that appear to have excess mortality. If so, explain and recompute expected death rates removing these periods.
 
@@ -250,6 +245,7 @@ p7 <- ggplot(monthly_mortality_rate, aes(x = date, y = rate)) +
         axis.text.x = element_text(angle = 45, hjust = 1))
 print(p7)
 ```
+
 There is apparently a strong year effect for mortality rate, this is likely due to the change of population stratification (switching from young generation to old generations).
 
 ```{r}
@@ -330,7 +326,6 @@ mod2 <- lm(rate ~ sex * new_agegroup + week  + day,
 # AIC: -405284
 ```
 
-
 ```{r}
 pred <- predict(mod2, newdata = dat, se.fit = TRUE)
 
@@ -381,7 +376,6 @@ mod1 <- lm(rate ~ sex + new_agegroup + week + day,
 mod2 <- lm(rate ~ sex * new_agegroup + week  + day + year,
                data = fit)
 ```
-
 
 ```{r}
 pred <- predict(mod2, newdata = dat, se.fit = TRUE)
@@ -439,6 +433,7 @@ summary(mod3)
 # Estimate excess deaths for each week of 2017-2018. Make sure you define the weeks so that one of the weeks starts the day María made landfall. Comment on excess mortality. Which age groups were affected? Were men and women affected differently?
 
 ## Linear Regression
+
 ```{r}
 # Define Weekly Periods Starting on María’s Landfall
 dat <- weekly_mortality_rate |> 
@@ -501,6 +496,7 @@ c(RMSE_mod1 = rmse1, RMSE_mod2 = rmse2,
   MAE_mod2 = mae2, MAE_mod3 = mae3)
 
 ```
+
 Overall, Mod3 performs better than both Mod1 and Mod3
 
 Predict Expected Mortality for Each Week (2017–2018) with mod3
@@ -525,7 +521,6 @@ mae_lm <- mae(prediction_data$outcome, prediction_data$expected)
 
 ```
 
-
 ```{r}
 excess_weekly <- prediction_data |>
   group_by(week, year) |>
@@ -541,7 +536,6 @@ excess_weekly <- prediction_data |>
   ) |>
   arrange(date_start)
 ```
-
 
 ```{r}
 p4 <- ggplot(excess_weekly[1:nrow(excess_weekly)-1,], aes(x = date_start, y = total_excess)) +
@@ -573,7 +567,6 @@ excess_by_demo <- prediction_data |>
   ) 
 ```
 
-
 ```{r}
 p5 <- ggplot(excess_by_demo, aes(x = week, y = excess, color = sex)) +
   geom_line(aes(group = new_agegroup)) +
@@ -589,7 +582,6 @@ p5 <- ggplot(excess_by_demo, aes(x = week, y = excess, color = sex)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 p5
 ```
-
 
 ## Time series:
 
@@ -653,7 +645,6 @@ fit <- fit|>
 predictions <- predict(baseline_model, newdata = fit, type = "response")
 ```
 
-
 ```{r}
 fit <- fit |> mutate(
   expected_deaths = predictions,
@@ -689,6 +680,7 @@ p6 <- ggplot(excess_weekly_ts[1:nrow(excess_weekly_ts)-1,], aes(x = date_start, 
   theme(plot.title = element_text(hjust = 0.5))
 p6
 ```
+
 ## Combine two model predictions:
 
 ```{r}
@@ -726,7 +718,6 @@ mae_gam
 mae_lm
 ```
 
-
 # Extract the data from the PDF shared with NY Times. Comment on how it matches with excessmort package data.
 
 ```{r}
@@ -739,7 +730,6 @@ ny_dat <- read_excel("NY_Data.xlsx") |> # import the NY data
 head(ny_dat)
 
 ```
-
 
 ```{r}
 ny_long <- ny_dat |>
@@ -775,7 +765,6 @@ ggplot(ny_long, aes(x = doy, y = deaths, color = factor(year), group = year)) +
   
 ```
 
-
 ## Weekly deaths by ny data
 
 ```{r}
@@ -807,7 +796,6 @@ p8 <- weekly_ny_long |>
 p8 
 ```
 
-
 ```{r}
 pr_3yr <- puerto_rico_counts |>
   filter(date >= ymd("2015-01-01") & date <= ymd("2017-12-31")) |>
@@ -833,7 +821,6 @@ ggplot(pr_3yr, aes(x = doy, y = total_deaths, color = as.factor(year))) +
 
 ```
 
-
 ```{r}
 weekly_deaths <- pr_3yr |>
   mutate(date = floor_date(date, week_start = 3, unit = "week")) |>
@@ -857,7 +844,6 @@ weekly_deaths |>
   theme(plot.title = element_text(hjust = 0.5))  +
   scale_x_date(limits = c(min(weekly_ny_long$full_date), as.Date("2017-11-15")))
 ```
-
 
 ```{r}
 weekly_ny_long <- weekly_ny_long |> rename(date = full_date)
@@ -920,8 +906,8 @@ fit_ny <- fit_ny |>
     arrange(date_start)
 ```
 
-
 ## Last
+
 ```{r}
 p10 <- full_join(weekly_ny_long, fit_ny, by = "date") |>
   mutate(excess_deaths_ny = outcome - expected_deaths) |>
@@ -940,5 +926,3 @@ p10 <- full_join(weekly_ny_long, fit_ny, by = "date") |>
   scale_x_date(limits = c(min(weekly_ny_long$date), as.Date("2017-11-01")))
 p10
 ```
-
-
